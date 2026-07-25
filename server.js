@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import app from './app.js';
-import { startListener } from './config/listener.js';
+import { startListener } from './src/config/listener.js';
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 startListener();
 
-app.listen(3000, () => {
-  console.log(`[server] listening on http://localhost:3000`);
+app.listen(PORT, () => {
+  console.log(`[server] listening on http://localhost:${PORT}`);
 });

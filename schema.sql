@@ -1,6 +1,8 @@
+-- ============================================================
+-- schema.sql — orders table, triggers, and seed data
+-- ============================================================
 
-
-
+-- 1. Table
 CREATE TABLE IF NOT EXISTS orders (
   id         SERIAL PRIMARY KEY,
   customer   TEXT        NOT NULL,
@@ -10,7 +12,23 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
---  Trigger function: auto-refresh updated_at on every UPDATE
+-- 2. Trigger function: auto-assign sequential next ID (MAX(id) + 1)
+CREATE OR REPLACE FUNCTION set_next_order_id()
+RETURNS TRIGGER AS $$
+BEGIN
+  SELECT COALESCE(MAX(id), 0) + 1 INTO NEW.id FROM orders;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_orders_next_id ON orders;
+
+CREATE TRIGGER trg_orders_next_id
+  BEFORE INSERT ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION set_next_order_id();
+
+-- 3. Trigger function: auto-refresh updated_at on every UPDATE
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -19,12 +37,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_orders_updated_at
+DROP TRIGGER IF EXISTS trg_orders_updated_at ON orders;
+
+CREATE TRIGGER trg_orders_updated_at
   BEFORE UPDATE ON orders
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
 
--- - Trigger function: publish change event to NOTIFY channel
+-- 4. Trigger function: publish change event to NOTIFY channel
 CREATE OR REPLACE FUNCTION notify_order_change()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -41,12 +61,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_orders_notify
+DROP TRIGGER IF EXISTS trg_orders_notify ON orders;
+
+CREATE TRIGGER trg_orders_notify
   AFTER INSERT OR UPDATE OR DELETE ON orders
   FOR EACH ROW
   EXECUTE FUNCTION notify_order_change();
 
-
+-- 5. Seed data (re-seeds cleanly)
+TRUNCATE TABLE orders RESTART IDENTITY;
 
 INSERT INTO orders (customer, item, status) VALUES
   ('Alice', 'Laptop',     'pending'),

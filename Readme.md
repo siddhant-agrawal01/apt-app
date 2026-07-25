@@ -131,7 +131,7 @@ npm install
 export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/orders_db"
 npm start
 ```
-Open `http://localhost:3000` in two browser tabs. Trigger a change from either tab, or directly via:
+Open `http://localhost:4000` in two browser tabs. Trigger a change from either tab, or directly via:
 ```bash
 psql -d orders_db -c "UPDATE orders SET status = 'shipped' WHERE id = 1;"
 ```

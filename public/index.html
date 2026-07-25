@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Orders</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border-radius: 0 !important; /* Strict sharp corners everywhere */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #ffffff;
+      color: #000000;
+      min-height: 100vh;
+      padding: 2.5rem 2rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      border-bottom: 2px solid #000000;
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #000000;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #5b626a;
+    }
+
+    /* ── Status indicator ───────────────────────────────── */
+    #status-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #5b626a;
+    }
+
+    #status-square {
+      width: 8px;
+      height: 8px;
+      background: #6c757d;
+      display: inline-block;
+    }
+
+    #status-square.connected {
+      background: #00c805;
+    }
+
+    #status-square.disconnected {
+      background: #ff5a5f;
+    }
+
+    /* ── Form ───────────────────────────────────────────── */
+    .form-container {
+      background: #f7f9fa;
+      border: 1px solid #e3e8ed;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #5b626a;
+      margin-bottom: 0.75rem;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    input, select, button {
+      font-family: inherit;
+      font-size: 0.875rem;
+      border: 1px solid #e3e8ed;
+      padding: 0.6rem 0.85rem;
+      outline: none;
+      background: #ffffff;
+      color: #000000;
+    }
+
+    input, select {
+      flex: 1 1 180px;
+    }
+
+    input:focus, select:focus {
+      border-color: #000000;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.1s linear, color 0.1s linear;
+      border: 1px solid #000000;
+    }
+
+    #btn-add {
+      background: #000000;
+      color: #ffffff;
+      padding: 0.6rem 1.25rem;
+    }
+
+    #btn-add:hover {
+      background: #00c805;
+      color: #000000;
+      border-color: #00c805;
+    }
+
+    #btn-add:disabled {
+      background: #e3e8ed;
+      color: #999999;
+      border-color: #e3e8ed;
+      cursor: not-allowed;
+    }
+
+    /* ── Table ──────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e3e8ed;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    thead th {
+      background: #f7f9fa;
+      padding: 0.75rem 1rem;
+      color: #5b626a;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #e3e8ed;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #e3e8ed;
+      background: #ffffff;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: #f7f9fa;
+    }
+
+    tbody td {
+      padding: 0.85rem 1rem;
+      color: #000000;
+    }
+
+    /* Non-bouncy row highlight flash */
+    @keyframes flash {
+      0%   { background-color: #e6f4ea; }
+      100% { background-color: #ffffff; }
+    }
+
+    tr.flash {
+      animation: flash 0.6s linear;
+    }
+
+    /* Sharp Status Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border: 1px solid transparent;
+    }
+
+    .badge-pending {
+      background: #fff8e6;
+      color: #b45309;
+      border-color: #fde68a;
+    }
+
+    .badge-shipped {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .badge-delivered {
+      background: #e6f4ea;
+      color: #008800;
+      border-color: #bbf7d0;
+    }
+
+    .badge-cancelled {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+
+    /* Action buttons */
+    .action-btn {
+      padding: 0.3rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #ffffff;
+      border: 1px solid #e3e8ed;
+      color: #000000;
+    }
+
+    .action-btn:hover {
+      border-color: #000000;
+    }
+
+    .btn-advance:hover {
+      background: #000000;
+      color: #ffffff;
+    }
+
+    .btn-delete:hover {
+      background: #ff5a5f;
+      color: #ffffff;
+      border-color: #ff5a5f;
+    }
+
+    #empty-msg {
+      color: #5b626a;
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Real-Time Orders</h1>
+      <p class="subtitle">Live streaming updates via PostgreSQL LISTEN/NOTIFY and SSE</p>
+    </div>
+    <div id="status-bar">
+      <span id="status-square"></span>
+      <span id="status-text">Connecting</span>
+    </div>
+  </div>
+
+  <!-- Create order form -->
+  <div class="form-container">
+    <div class="form-title">Create New Order</div>
+    <form id="create-form">
+      <input  id="f-customer" type="text"   placeholder="Customer Name" required />
+      <input  id="f-item"     type="text"   placeholder="Item Name"     required />
+      <select id="f-status">
+        <option value="pending">pending</option>
+        <option value="shipped">shipped</option>
+        <option value="delivered">delivered</option>
+        <option value="cancelled">cancelled</option>
+      </select>
+      <button id="btn-add" type="submit">Add Order</button>
+    </form>
+  </div>
+
+  <!-- Orders table -->
+  <div class="table-wrap">
+    <table id="orders-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Customer</th>
+          <th>Item</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="orders-body">
+        <tr><td colspan="6" id="empty-msg">Loading orders...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+const orders = new Map(); // id → order object
+
+const STATUS_CYCLE = ['pending', 'shipped', 'delivered'];
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function badge(status) {
+  return `<span class="badge badge-${status}">${status}</span>`;
+}
+
+function fmt(dateStr) {
+  return new Date(dateStr).toLocaleString();
+}
+
+function renderRow(order, flash = false) {
+  const tr = document.createElement('tr');
+  tr.id = `row-${order.id}`;
+  if (flash) tr.classList.add('flash');
+
+  const nextStatus = (() => {
+    const idx = STATUS_CYCLE.indexOf(order.status);
+    return idx >= 0 && idx < STATUS_CYCLE.length - 1
+      ? STATUS_CYCLE[idx + 1]
+      : null;
+  })();
+
+  tr.innerHTML = `
+    <td>${order.id}</td>
+    <td>${escHtml(order.customer)}</td>
+    <td>${escHtml(order.item)}</td>
+    <td>${badge(order.status)}</td>
+    <td>${fmt(order.created_at)}</td>
+    <td style="display:flex;gap:0.4rem;">
+      ${nextStatus
+        ? `<button class="action-btn btn-advance" data-id="${order.id}" data-status="${nextStatus}">Set ${nextStatus}</button>`
+        : ''}
+      <button class="action-btn btn-delete" data-id="${order.id}">Delete</button>
+    </td>
+  `;
+
+  // Advance status
+  tr.querySelectorAll('.btn-advance').forEach(btn => {
+    btn.addEventListener('click', () => advanceStatus(+btn.dataset.id, btn.dataset.status));
+  });
+  // Delete
+  tr.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteOrder(+btn.dataset.id));
+  });
+
+  return tr;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function repaint() {
+  const tbody = document.getElementById('orders-body');
+  tbody.innerHTML = '';
+
+  if (!orders.size) {
+    tbody.innerHTML = '<tr><td colspan="6" id="empty-msg">No orders available.</td></tr>';
+    return;
+  }
+
+  // Newest first
+  const sorted = [...orders.values()].sort((a, b) => b.id - a.id);
+  sorted.forEach(o => tbody.appendChild(renderRow(o)));
+}
+
+function upsertRow(order, flash = false) {
+  orders.set(order.id, order);
+  const existing = document.getElementById(`row-${order.id}`);
+  const newRow   = renderRow(order, flash);
+
+  if (existing) {
+    existing.replaceWith(newRow);
+  } else {
+    const tbody = document.getElementById('orders-body');
+    const emptyMsg = document.getElementById('empty-msg');
+    if (emptyMsg) tbody.innerHTML = '';
+    tbody.prepend(newRow);
+  }
+}
+
+function removeRow(id) {
+  orders.delete(id);
+  const tr = document.getElementById(`row-${id}`);
+  if (tr) tr.remove();
+  if (!orders.size) {
+    document.getElementById('orders-body').innerHTML =
+      '<tr><td colspan="6" id="empty-msg">No orders available.</td></tr>';
+  }
+}
+
+// ── Load initial state ─────────────────────────────────────────────────────────
+async function loadOrders() {
+  try {
+    const res = await fetch('/orders');
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      data.forEach(o => orders.set(o.id, o));
+      repaint();
+    }
+  } catch (err) {
+    console.error('Failed to load orders:', err);
+  }
+}
+
+// ── SSE ────────────────────────────────────────────────────────────────────────
+function connectSSE() {
+  const square = document.getElementById('status-square');
+  const text   = document.getElementById('status-text');
+
+  const es = new EventSource('/events');
+
+  es.onopen = () => {
+    square.className = 'connected';
+    text.textContent = 'Live';
+  };
+
+  es.onmessage = (e) => {
+    try {
+      const { operation, data } = JSON.parse(e.data);
+      if (operation === 'DELETE') {
+        removeRow(data.id);
+      } else {
+        upsertRow(data, true); // INSERT or UPDATE — flash highlight
+      }
+    } catch (err) {
+      console.error('Failed to parse SSE payload:', err);
+    }
+  };
+
+  es.onerror = () => {
+    square.className = 'disconnected';
+    text.textContent = 'Disconnected';
+  };
+}
+
+// ── REST helpers ───────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const { error } = await res.json();
+    throw new Error(error || res.statusText);
+  }
+  return res.json();
+}
+
+async function advanceStatus(id, status) {
+  await api('PUT', `/orders/${id}`, { status });
+}
+
+async function deleteOrder(id) {
+  await api('DELETE', `/orders/${id}`);
+}
+
+// ── Create form ────────────────────────────────────────────────────────────────
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn      = document.getElementById('btn-add');
+  const customer = document.getElementById('f-customer').value.trim();
+  const item     = document.getElementById('f-item').value.trim();
+  const status   = document.getElementById('f-status').value;
+
+  btn.disabled = true;
+  try {
+    await api('POST', '/orders', { customer, item, status });
+    e.target.reset();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+loadOrders();
+connectSSE();
+</script>
+</body>
+</html>

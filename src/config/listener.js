@@ -4,7 +4,7 @@ import { broadcast } from '../sse/registry.js';
 const { Client } = pg;
 
 const BASE_DELAY = 2000;
-const MAX_DELAY = 30000;
+const MAX_DELAY = 40000;
 
 function getDbConfig(url) {
   if (!url) return {};
