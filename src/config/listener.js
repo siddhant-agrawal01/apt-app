@@ -19,10 +19,7 @@ function getDbConfig(url) {
   };
 }
 
-/**
- * Connect a dedicated pg.Client and start listening on 'orders_changes'.
- * Automatically reconnects if the connection drops.
- */
+
 export async function startListener(delay = BASE_DELAY) {
   const listener = new Client(getDbConfig(process.env.DATABASE_URL));
 

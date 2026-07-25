@@ -1,5 +1,4 @@
-// In-memory registry of connected SSE clients.
-// Each entry: { id: number, res: express.Response }
+
 const clients = new Map();
 let nextId = 1;
 

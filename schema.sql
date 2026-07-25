@@ -1,8 +1,3 @@
--- ============================================================
--- schema.sql — orders table, triggers, and seed data
--- ============================================================
-
--- 1. Table
 CREATE TABLE IF NOT EXISTS orders (
   id         SERIAL PRIMARY KEY,
   customer   TEXT        NOT NULL,
@@ -12,7 +7,7 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. Trigger function: auto-assign sequential next ID (MAX(id) + 1)
+-- . Trigger function: auto-assign sequential next ID (MAX(id) + 1)
 CREATE OR REPLACE FUNCTION set_next_order_id()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -28,7 +23,7 @@ CREATE TRIGGER trg_orders_next_id
   FOR EACH ROW
   EXECUTE FUNCTION set_next_order_id();
 
--- 3. Trigger function: auto-refresh updated_at on every UPDATE
+-- . Trigger function: auto-refresh updated_at on every UPDATE
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -44,7 +39,7 @@ CREATE TRIGGER trg_orders_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
 
--- 4. Trigger function: publish change event to NOTIFY channel
+-- Trigger function: publish change event to NOTIFY channel
 CREATE OR REPLACE FUNCTION notify_order_change()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -68,7 +63,6 @@ CREATE TRIGGER trg_orders_notify
   FOR EACH ROW
   EXECUTE FUNCTION notify_order_change();
 
--- 5. Seed data (re-seeds cleanly)
 TRUNCATE TABLE orders RESTART IDENTITY;
 
 INSERT INTO orders (customer, item, status) VALUES
